@@ -26,7 +26,7 @@ Deploy Open WebUI with Verda serverless GPU containers for cost-effective infere
 |  +---------------------------+  +-----------------+   |
 |  |  Embeddings + Reranking   |  |       LLM       |   |
 |  |  Infinity (bge-m3 + rer.) |  | vLLM Ministral  |   |
-|  |                           |  |  14B Reasoning  |   |
+|  |                           |  |  14B Instruct   |   |
 |  |     RTX 4500 Ada          |  |    A100 80GB    |   |
 |  +---------------------------+  +-----------------+   |
 +-------------------------------------------------------+
@@ -75,7 +75,7 @@ Go to [Verda Console](https://console.verda.com) → Serverless Containers → C
 | Image | `vllm/vllm-openai:v0.11.2` |
 | Port | `8000` |
 | Entrypoint | (leave empty) |
-| Start Command | `--model mistralai/Ministral-3-14B-Reasoning-2512 --tokenizer_mode mistral --config_format mistral --load_format mistral --max-model-len 32768 --gpu-memory-utilization 0.9` |
+| Start Command | `--model mistralai/Ministral-3-14B-Instruct-2512 --tokenizer_mode mistral --config_format mistral --load_format mistral --max-model-len 32768 --gpu-memory-utilization 0.9` |
 | GPU | A100 80GB |
 | Min Replicas | 0 |
 | Max Replicas | 1 |
@@ -95,8 +95,8 @@ Go to [Verda Console](https://console.verda.com) → Serverless Containers → C
 | Setting | Value |
 |---------|-------|
 | Provider | `vLLM` |
-| LiteLLM Model Name(s) | `hosted_vllm/mistralai/Ministral-3-14B-Reasoning-2512` |
-| Public Model Name | `ministral-14b-reasoning` |
+| LiteLLM Model Name(s) | `hosted_vllm/mistralai/Ministral-3-14B-Instruct-2512` |
+| Public Model Name | `ministral-14b-instruct` |
 | API Base | `https://containers.datacrunch.io/YOUR-VLLM-CONTAINER/v1` |
 | API Key | Your Verda Inference API Key (`dc_...`) |
 
