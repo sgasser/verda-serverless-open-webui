@@ -5,31 +5,31 @@ Deploy Open WebUI with Verda serverless GPU containers for cost-effective infere
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  CPU Server                                            │
-│                                                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │  Open WebUI │  │  PostgreSQL │  │   SearXNG   │     │
-│  │  (no GPU)   │  │  + pgvector │  │             │     │
-│  └──────┬──────┘  └─────────────┘  └─────────────┘     │
-│         │                                               │
-│  ┌──────┴──────┐  ┌─────────────┐                      │
-│  │   LiteLLM   │  │    Caddy    │                      │
-│  │   (Proxy)   │  │  (HTTPS)    │                      │
-│  └──────┬──────┘  └─────────────┘                      │
-└─────────┼───────────────────────────────────────────────┘
-          │
-          ▼ API Calls (pay-per-use)
-┌─────────────────────────────────────────────────────────┐
-│  Verda Serverless Containers                           │
-│                                                         │
-│  ┌───────────────────────────┐  ┌─────────────────┐    │
-│  │  Embeddings + Reranking   │  │       LLM       │    │
-│  │  Infinity (bge-m3 + rer.) │  │ vLLM Ministral  │    │
-│  │                           │  │  14B Reasoning  │    │
-│  │         L40S              │  │    A100 80GB    │    │
-│  └───────────────────────────┘  └─────────────────┘    │
-└─────────────────────────────────────────────────────────┘
++-------------------------------------------------------+
+|  CPU Server                                           |
+|                                                       |
+|  +-------------+  +-------------+  +-------------+    |
+|  |  Open WebUI |  |  PostgreSQL |  |   SearXNG   |    |
+|  |             |  |  + pgvector |  |             |    |
+|  +------+------+  +-------------+  +-------------+    |
+|         |                                             |
+|  +------+------+  +-------------+                     |
+|  |   LiteLLM   |  |    Caddy    |                     |
+|  |   (Proxy)   |  |   (HTTPS)   |                     |
+|  +------+------+  +-------------+                     |
++---------+---------------------------------------------+
+          |
+          v API Calls (pay-per-use)
++-------------------------------------------------------+
+|  Verda Serverless Containers                          |
+|                                                       |
+|  +---------------------------+  +-----------------+   |
+|  |  Embeddings + Reranking   |  |       LLM       |   |
+|  |  Infinity (bge-m3 + rer.) |  | vLLM Ministral  |   |
+|  |                           |  |  14B Reasoning  |   |
+|  |     RTX 4500 Ada          |  |    A100 80GB    |   |
+|  +---------------------------+  +-----------------+   |
++-------------------------------------------------------+
 ```
 
 ## Quick Start
@@ -62,7 +62,7 @@ Go to [Verda Console](https://console.verda.com) → Serverless Containers → C
 | Port | `8080` |
 | Entrypoint | (leave empty) |
 | Start Command | `v2 --model-id BAAI/bge-m3 --model-id BAAI/bge-reranker-v2-m3 --port 8080` |
-| GPU | L40S (48GB) |
+| GPU | RTX 4500 Ada (24GB) |
 | Min Replicas | 0 |
 | Max Replicas | 1 |
 | Health Check | `/health` |
