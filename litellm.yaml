@@ -1,0 +1,21 @@
+# Models and API keys are managed through the LiteLLM UI at http://localhost:4000
+# Access the UI to add your OpenAI keys and configure models
+
+litellm_settings:
+  set_verbose: false
+  request_timeout: 600
+  extra_spend_tag_headers:
+    - "x-openwebui-user-id"
+    - "x-openwebui-user-email"
+    - "x-openwebui-user-name"
+
+general_settings:
+  master_key: "os.environ/LITELLM_MASTER_KEY"
+  litellm_salt_key: "os.environ/LITELLM_SALT_KEY"
+  user_header_mappings:
+    - header_name: X-OpenWebUI-User-Id
+      litellm_user_role: internal_user
+    - header_name: X-OpenWebUI-User-Email
+      litellm_user_role: customer
+    - header_name: X-OpenWebUI-User-Name
+      litellm_user_role: internal_user

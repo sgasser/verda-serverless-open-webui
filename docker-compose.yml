@@ -1,0 +1,167 @@
+# Open WebUI Stack - CPU Only (for Verda Serverless Architecture)
+# Use with external Verda serverless containers for Embeddings, Reranking, and LLM
+#
+# Deploy on: Verda CPU.8V.32G (~$44/mo) or similar
+# Serverless: TEI for embeddings/reranking, vLLM for LLM
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      LITELLM_DB_PASSWORD: ${LITELLM_DB_PASSWORD}
+      OPENWEBUI_DB_PASSWORD: ${OPENWEBUI_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - webui-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  litellm:
+    image: ghcr.io/berriai/litellm-database:main-stable
+    container_name: litellm
+    expose:
+      - "4000"
+    volumes:
+      - ./litellm.yaml:/app/config.yaml:ro
+    environment:
+      - DATABASE_URL=postgresql://litellm:${LITELLM_DB_PASSWORD}@postgres:5432/litellm
+      - STORE_MODEL_IN_DB=True
+    env_file:
+      - .env
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - webui-network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    expose:
+      - "8080"
+    volumes:
+      - ./searxng.yml:/etc/searxng/settings.yml:ro
+      - ./searxng-limiter.toml:/etc/searxng/limiter.toml:ro
+      - searxng-data:/var/cache/searxng
+    environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    networks:
+      - webui-network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    expose:
+      - "8080"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://openwebui:${OPENWEBUI_DB_PASSWORD}@postgres:5432/openwebui
+
+      # LLM Backend (LiteLLM -> Verda Serverless)
+      - OPENAI_API_BASE_URL=http://litellm:4000/v1
+      - OPENAI_API_KEY=${LITELLM_MASTER_KEY}
+
+      # Auth & Features
+      - WEBUI_AUTH=True
+      - ENABLE_COMMUNITY_SHARING=${ENABLE_COMMUNITY_SHARING:-false}
+      - ENABLE_EVALUATION_ARENA_MODELS=${ENABLE_EVALUATION_ARENA_MODELS:-false}
+      - ENABLE_MESSAGE_RATING=${ENABLE_MESSAGE_RATING:-false}
+
+      # Web Search
+      - ENABLE_WEB_SEARCH=True
+      - ENABLE_RAG_WEB_SEARCH=True
+      - WEB_SEARCH_ENGINE=searxng
+      - SEARXNG_QUERY_URL=http://searxng:8080
+      - WEB_SEARCH_RESULT_COUNT=5
+      - WEB_SEARCH_CONCURRENT_REQUESTS=3
+
+      # Vector Database
+      - VECTOR_DB=pgvector
+      - PGVECTOR_DB_URL=postgresql://openwebui:${OPENWEBUI_DB_PASSWORD}@postgres:5432/openwebui
+
+      # RAG - External Embeddings (Verda Serverless TEI)
+      # Configure in Admin UI: Settings -> Documents -> Embedding Model
+      # Set to "External" and enter Verda TEI endpoint URL
+
+      # RAG - External Reranking (Verda Serverless TEI)
+      # Configure in Admin UI: Settings -> Documents -> Reranking Model
+      # Set to "External" and enter Verda TEI rerank endpoint URL
+
+      # Hybrid Search (BM25 + Embeddings)
+      - ENABLE_RAG_HYBRID_SEARCH=true
+      - RAG_TOP_K=10
+      - RAG_TOP_K_RERANKER=3
+      - RAG_RELEVANCE_THRESHOLD=0.0
+
+    env_file:
+      - .env
+    volumes:
+      - open-webui-data:/app/backend/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+    networks:
+      - webui-network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - OPENWEBUI_DOMAIN=${OPENWEBUI_DOMAIN}
+      - LITELLM_DOMAIN=${LITELLM_DOMAIN}
+    depends_on:
+      - open-webui
+    networks:
+      - webui-network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  webui-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
+  searxng-data:
+  open-webui-data:

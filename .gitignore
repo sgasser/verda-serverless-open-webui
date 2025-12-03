@@ -1,0 +1,5 @@
+.env
+.DS_Store
+backups/
+.claude/
+docker-compose.override.yml
